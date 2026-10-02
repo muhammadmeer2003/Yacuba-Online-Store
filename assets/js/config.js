@@ -1,4 +1,4 @@
-export const SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
+export const SUPABASE_URL = "https://wrdsxcdabpzwbfgcbbol.supabase.co/rest/v1/;
 export const SUPABASE_ANON_KEY = "sb_publishable_DHiQO1JXCUYLgRTk4VnBJQ_ZzKTMkPA";
 
 export const STORE = {
