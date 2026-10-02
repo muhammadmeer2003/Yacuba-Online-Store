@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+    <script src="https://jsdelivr.net"></script>
+    <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body class="admin-dashboard-body">
+    <nav class="admin-topbar"><h2>Dashboard</h2><button id="logoutBtn" class="logout-btn">Logout</button></nav>
+    <div class="dashboard-wrapper">
+        <aside class="panel-section">
+            <h3>Categories</h3>
+            <form id="categoryForm"><input type="text" id="catName" placeholder="Category Name" required><button type="submit" class="save-btn">Add</button></form>
+            <div id="categoriesList"></div>
+        </aside>
+        <main class="panel-section">
+            <h3>Products</h3>
+            <form id="productForm">
+                <input type="text" id="prodName" placeholder="Product Name" required>
+                <select id="prodCategory" required><option value="">Select Category</option></select>
+                <input type="number" id="prodPrice" placeholder="Price" required>
+                <input type="number" id="prodSalePrice" placeholder="Sale Price (Optional)">
+                <textarea id="prodDesc" placeholder="Description"></textarea>
+                <input type="file" id="prodFile" accept="image/*">
+                <button type="submit" class="save-btn">Add Product</button>
+            </form>
+            <table class="inventory-table"><thead><tr><th>Name</th><th>Category</th><th>Price</th><th>Actions</th></tr></thead><tbody id="productsTableBody"></tbody></table>
+        </main>
+    </div>
+    <script src="../assets/js/config.js"></script>
+    <script>
+        let globalCategories = [];
+        document.addEventListener('DOMContentLoaded', async () => {
+            const { data } = await _supabase.auth.getSession();
+            if (!data.session) { window.location.href = "login.html"; return; }
+            document.getElementById('logoutBtn').addEventListener('click', async () => { await _supabase.auth.signOut(); window.location.href = "login.html"; });
+            document.getElementById('categoryForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await _supabase.from('categories').insert([{ name: document.getElementById('catName').value }]);
+                document.getElementById('catName').value = ''; refreshData();
+            });
+            document.getElementById('productForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const fileEl = document.getElementById('prodFile');
+                let image_url = '';
+                if (fileEl.files.length > 0) {
+                    const file = fileEl.files[0];
+                    const fileName = `${Math.random()}.${file.name.split('.').pop()}`;
+                    const { error } = await _supabase.storage.from('product-images').upload(fileName, file);
+                    if(!error) image_url = _supabase.storage.from('product-images').getPublicUrl(fileName).data.publicUrl;
+                }
+                await _supabase.from('products').insert([{
+                    name: document.getElementById('prodName').value,
+                    category_id: document.getElementById('prodCategory').value,
+                    price: parseFloat(document.getElementById('prodPrice').value),
+                    sale_price: document.getElementById('prodSalePrice').value ? parseFloat(document.getElementById('prodSalePrice').value) : null,
+                    description: document.getElementById('prodDesc').value,
+                    image_url
+                }]);
+                document.getElementById('productForm').reset(); refreshData();
+            });
+            refreshData();
+        });
+        async function refreshData() {
+            const { data: cats } = await _supabase.from('categories').select('*').order('name');
+            globalCategories = cats || [];
+            const select = document.getElementById('prodCategory');
+            select.innerHTML = '<option value="">Select Category</option>';
+            document.getElementById('categoriesList').innerHTML = globalCategories.map(c => `<div class="list-item"><span>${c.name}</span><button onclick="deleteCat('${c.id}')">X</button></div>`).join('');
+            globalCategories.forEach(c => { select.innerHTML += `<option value="${c.id}">${c.name}</option>`; });
+            
+            const { data: prods } = await _supabase.from('products').select('*, categories(name)');
+            document.getElementById('productsTableBody').innerHTML = (prods || []).map(p => `<tr><td>${p.name}</td><td>${p.categories?.name || ''}</td><td>PHP ${p.price}</td><td><button onclick="deleteProd('${p.id}')">Delete</button></td></tr>`).join('');
+        }
+        async function deleteCat(id) { if(confirm("Delete?")) { await _supabase.from('categories').delete().eq('id', id); refreshData(); } }
+        async function deleteProd(id) { if(confirm("Delete?")) { await _supabase.from('products').delete().eq('id', id); refreshData(); } }
+    </script>
+</body>
+</html>
