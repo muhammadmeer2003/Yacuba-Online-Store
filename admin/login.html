@@ -2,30 +2,94 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YACUBA | Admin Authentication</title>
     <script src="https://jsdelivr.net"></script>
-    <link rel="stylesheet" href="../assets/css/style.css">
+    <link href="https://cloudflare.com" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #d4af37;
+            --primary-hover: #b89326;
+            --dark-bg: #0a0a0a;
+            --card-bg: #161616;
+            --input-bg: #222222;
+            --text-light: #ffffff;
+            --text-muted: #9ca3af;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: var(--dark-bg); height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        
+        .login-container { background-color: var(--card-bg); width: 100%; max-width: 420px; padding: 40px; border-radius: 12px; border: 1px solid #2d2d2d; box-shadow: 0 20px 40px rgba(0,0,0,0.5); text-align: center; }
+        .logo-area { font-size: 2rem; font-weight: 800; color: var(--text-light); margin-bottom: 8px; letter-spacing: 1px; }
+        .logo-area span { color: var(--primary); }
+        .subtitle { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 35px; }
+        
+        .form-group { display: flex; flex-direction: column; text-align: left; margin-bottom: 22px; gap: 8px; }
+        .form-group label { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+        
+        .input-wrapper { position: relative; display: flex; align-items: center; }
+        .input-wrapper i { position: absolute; left: 15px; color: #555; font-size: 1rem; }
+        .input-wrapper input { width: 100%; padding: 13px 15px 13px 45px; background-color: var(--input-bg); border: 1px solid #333; border-radius: 6px; color: var(--text-light); font-size: 0.95rem; outline: none; transition: 0.2s; }
+        .input-wrapper input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(212,175,55,0.15); }
+        
+        .login-btn { width: 100%; padding: 14px; background-color: var(--primary); color: var(--dark-bg); border: none; border-radius: 6px; font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; margin-top: 10px; transition: 0.2s; }
+        .login-btn:hover { background-color: var(--text-light); color: var(--dark-bg); transform: translateY(-1px); }
+        
+        .alert { background-color: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid #ef4444; padding: 12px; border-radius: 6px; font-size: 0.9rem; margin-bottom: 20px; display: none; text-align: left; align-items: center; gap: 10px; }
+    </style>
 </head>
-<body class="admin-auth-body">
-    <div class="login-card">
-        <h2>System Controller</h2>
-        <div id="alertBox" class="alert error" style="display:none;"></div>
+<body>
+
+    <div class="login-container">
+        <div class="logo-area"><i class="fas fa-user-shield" style="color: var(--primary);"></i> YACUBA<span>.</span></div>
+        <div class="subtitle">Secure Administrative Control Gateway</div>
+        
+        <div id="alertBox" class="alert">
+            <i class="fas fa-exclamation-circle"></i> <span id="errorMsg"></span>
+        </div>
+        
         <form id="loginForm">
-            <div class="input-group"><label>Email</label><input type="email" id="email" required></div>
-            <div class="input-group"><label>Password</label><input type="password" id="password" required></div>
-            <button type="submit" class="btn login-btn">Login</button>
+            <div class="form-group">
+                <label>Email Address</label>
+                <div class="input-wrapper">
+                    <i class="fas fa-envelope"></i>
+                    <input type="email" id="email" required placeholder="admin@yacuba.com" autocomplete="email">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Security Password</label>
+                <div class="input-wrapper">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="password" required placeholder="••••••••" autocomplete="current-password">
+                </div>
+            </div>
+            
+            <button type="submit" class="login-btn">Establish Secure Session</button>
         </form>
     </div>
+
     <script src="../assets/js/config.js"></script>
     <script>
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const { data, error } = await _supabase.auth.signInWithPassword({
-                email: document.getElementById('email').value,
-                password: document.getElementById('password').value
-            });
-            if (error) { document.getElementById('alertBox').style.display = 'block'; document.getElementById('alertBox').textContent = error.message; }
-            else { window.location.href = "index.html"; }
+            const alertBox = document.getElementById('alertBox');
+            const errorMsg = document.getElementById('errorMsg');
+            alertBox.style.display = 'none';
+
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+
+            try {
+                const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
+                if (error) throw error;
+                
+                // Success - Redirect to Dashboard
+                window.location.replace("index.html");
+            } catch (err) {
+                errorMsg.textContent = err.message || "Invalid authentication parameters.";
+                alertBox.style.display = 'flex';
+            }
         });
     </script>
 </body>
