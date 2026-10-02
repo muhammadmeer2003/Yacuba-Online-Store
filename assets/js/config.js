@@ -1,5 +1,5 @@
 export const SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
-export const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_PUBLIC_KEY";
+export const SUPABASE_ANON_KEY = "sb_publishable_DHiQO1JXCUYLgRTk4VnBJQ_ZzKTMkPA";
 
 export const STORE = {
   MART_NAME: "YACUBA ONLINE STORE",
