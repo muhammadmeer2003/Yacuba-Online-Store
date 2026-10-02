@@ -1,230 +1,33 @@
 import { supabase } from "./supabase.js";
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
+import { esc, money } from "./site.js";
+const $=id=>document.getElementById(id);const BUCKET="product-images";
+const state={categories:[],products:[],orders:[],reviews:[],feedback:[],banners:[],editProduct:null,editCategory:null,editBanner:null};
+async function requireAdmin(){const {data:{user},error}=await supabase.auth.getUser();if(error||!user){location.href="login.html";return null;}const {data:p,error:e}=await supabase.from("profiles").select("id,email,role").eq("id",user.id).maybeSingle();if(e||p?.role!=="admin"){await supabase.auth.signOut();location.href="login.html";return null;}$("adminEmail").textContent=p.email||user.email;return user;}
+async function loadAll(){const [c,p,o,r,f,b]=await Promise.all([
+ supabase.from("categories").select("id,name").order("name"),
+ supabase.from("products").select("id,name,description,price,sale_price,is_available,image_url,image_path,category_id,created_at").order("created_at",{ascending:false}),
+ supabase.from("orders").select("*").order("created_at",{ascending:false}).limit(100),
+ supabase.from("reviews").select("id,customer_name,rating,review_text,status,created_at").order("created_at",{ascending:false}).limit(100),
+ supabase.from("feedback").select("id,name,email,phone,message,status,created_at").order("created_at",{ascending:false}).limit(100),
+ supabase.from("site_banners").select("*").order("sort_order")
+ ]); for(const x of [c,p,o,r,f,b])if(x.error)throw x.error; state.categories=c.data||[];state.products=p.data||[];state.orders=o.data||[];state.reviews=r.data||[];state.feedback=f.data||[];state.banners=b.data||[];renderAll();}
+function renderAll(){renderStats();renderCategories();renderProducts();renderOrders();renderReviews();renderFeedback();renderBanners();populateCategory();}
+function renderStats(){const stats=[['statProducts',state.products.length],['statCategories',state.categories.length],['statOrders',state.orders.filter(o=>!['Completed','Cancelled'].includes(o.status)).length],['statReviews',state.reviews.filter(r=>r.status==='pending').length],['statFeedback',state.feedback.filter(f=>f.status==='new').length]];stats.forEach(([id,v])=>$(id).textContent=v);}
+function renderCategories(){$("categoriesList").innerHTML=state.categories.map(c=>`<div class="data-row"><div><strong>${esc(c.name)}</strong></div><div class="row-actions"><button class="small-btn" data-edit-cat="${c.id}">Edit</button><button class="small-btn danger" data-del-cat="${c.id}">Delete</button></div></div>`).join('')||'<div class="empty-admin">No categories yet.</div>';document.querySelectorAll('[data-edit-cat]').forEach(b=>b.onclick=()=>{state.editCategory=state.categories.find(x=>x.id===b.dataset.editCat);$('categoryName').value=state.editCategory.name;$('categoryModal').classList.add('open');});document.querySelectorAll('[data-del-cat]').forEach(b=>b.onclick=()=>deleteCategory(b.dataset.delCat));}
+function renderProducts(){$("productsTable").innerHTML=state.products.map(p=>`<div class="data-row product-admin"><div class="tiny-thumb">${p.image_url?`<img src="${esc(p.image_url)}">`:'Y'}</div><div class="grow"><strong>${esc(p.name)}</strong><span>${money(p.sale_price??p.price)} · ${esc(state.categories.find(c=>c.id===p.category_id)?.name||'Uncategorized')}</span></div><span class="status ${p.is_available?'good':'bad'}">${p.is_available?'Available':'Out of Stock'}</span><div class="row-actions"><button class="small-btn" data-edit-prod="${p.id}">Edit</button><button class="small-btn danger" data-del-prod="${p.id}">Delete</button></div></div>`).join('')||'<div class="empty-admin">No products yet.</div>';document.querySelectorAll('[data-edit-prod]').forEach(b=>b.onclick=()=>openProduct(b.dataset.editProd));document.querySelectorAll('[data-del-prod]').forEach(b=>b.onclick=()=>deleteProduct(b.dataset.delProd));}
+function renderOrders(){const box=$("ordersTable");box.innerHTML=state.orders.map(o=>{const items=Array.isArray(o.items)?o.items:[];return `<div class="order-card"><div class="order-head"><div><strong>${esc(o.order_number)}</strong><span>${new Date(o.created_at).toLocaleString()}</span></div><select data-order-status="${o.id}">${['Pending','Confirmed','Preparing','Out for Delivery','Completed','Cancelled'].map(s=>`<option ${o.status===s?'selected':''}>${s}</option>`).join('')}</select></div><div class="order-customer"><b>${esc(o.customer_name)}</b> · ${esc(o.phone)}<br>${esc(o.address)}${o.whatsapp?`<br>WhatsApp: ${esc(o.whatsapp)}`:''}</div><div class="order-items">${items.map(i=>`<span>${esc(i.name||'Product')} × ${i.quantity}</span>`).join('')}</div><div class="order-total">Total <b>${money(o.total_amount)}</b></div></div>`}).join('')||'<div class="empty-admin">No orders yet.</div>';document.querySelectorAll('[data-order-status]').forEach(s=>s.onchange=async()=>{const {error}=await supabase.from('orders').update({status:s.value,updated_at:new Date().toISOString()}).eq('id',s.dataset.orderStatus);if(error)alert(error.message);else loadAll();});}
+function renderReviews(){$("reviewsTable").innerHTML=state.reviews.map(r=>`<div class="data-row"><div class="grow"><strong>${esc(r.customer_name)} · ${'★'.repeat(r.rating)}</strong><span>${esc(r.review_text)}</span></div><select data-review-status="${r.id}">${['pending','approved','hidden'].map(s=>`<option ${r.status===s?'selected':''}>${s}</option>`).join('')}</select></div>`).join('')||'<div class="empty-admin">No reviews yet.</div>';document.querySelectorAll('[data-review-status]').forEach(s=>s.onchange=async()=>{const {error}=await supabase.from('reviews').update({status:s.value}).eq('id',s.dataset.reviewStatus);if(error)alert(error.message);else loadAll();});}
+function renderFeedback(){$("feedbackTable").innerHTML=state.feedback.map(f=>`<div class="data-row"><div class="grow"><strong>${esc(f.name)} · ${esc(f.email||'No email')}</strong><span>${esc(f.message)}</span><small>${esc(f.phone||'')}</small></div><select data-feedback-status="${f.id}">${['new','read','resolved'].map(s=>`<option ${f.status===s?'selected':''}>${s}</option>`).join('')}</select></div>`).join('')||'<div class="empty-admin">No feedback yet.</div>';document.querySelectorAll('[data-feedback-status]').forEach(s=>s.onchange=async()=>{const {error}=await supabase.from('feedback').update({status:s.value}).eq('id',s.dataset.feedbackStatus);if(error)alert(error.message);else loadAll();});}
+function renderBanners(){$("bannersList").innerHTML=state.banners.map(b=>`<div class="data-row"><div class="grow"><strong>${esc(b.title)}</strong><span>${esc(b.subtitle||'')}</span></div><span class="status ${b.is_active?'good':'bad'}">${b.is_active?'Active':'Hidden'}</span><div class="row-actions"><button class="small-btn" data-edit-banner="${b.id}">Edit</button><button class="small-btn danger" data-del-banner="${b.id}">Delete</button></div></div>`).join('')||'<div class="empty-admin">No offers/banners yet.</div>';document.querySelectorAll('[data-edit-banner]').forEach(b=>b.onclick=()=>openBanner(b.dataset.editBanner));document.querySelectorAll('[data-del-banner]').forEach(b=>b.onclick=()=>deleteBanner(b.dataset.delBanner));}
+function populateCategory(){ $("productCategory").innerHTML='<option value="">No category</option>'+state.categories.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');}
+function openProduct(id){const p=state.products.find(x=>x.id===id);if(!p)return;state.editProduct=p;$('productName').value=p.name;$('productCategory').value=p.category_id||'';$('productPrice').value=p.price;$('productSalePrice').value=p.sale_price??'';$('productDescription').value=p.description||'';$('productAvailable').checked=p.is_available;$('productModal').classList.add('open');}
+function openBanner(id){const b=state.banners.find(x=>x.id===id);state.editBanner=b||null;$('bannerTitle').value=b?.title||'';$('bannerSubtitle').value=b?.subtitle||'';$('bannerBadge').value=b?.badge||'';$('bannerButtonText').value=b?.button_text||'Shop Products';$('bannerButtonLink').value=b?.button_link||'products.html';$('bannerImageUrl').value=b?.image_url||'';$('bannerActive').checked=b?.is_active!==false;$('bannerModal').classList.add('open');}
+async function deleteProduct(id){const p=state.products.find(x=>x.id===id);if(!confirm(`Delete ${p?.name}?`))return;if(p?.image_path)await supabase.storage.from(BUCKET).remove([p.image_path]);const {error}=await supabase.from('products').delete().eq('id',id);if(error)alert(error.message);else loadAll();}
+async function deleteCategory(id){const c=state.categories.find(x=>x.id===id);if(!confirm(`Delete ${c?.name}?`))return;const {error}=await supabase.from('categories').delete().eq('id',id);if(error)alert(error.message);else loadAll();}
+async function deleteBanner(id){if(!confirm('Delete this banner?'))return;const {error}=await supabase.from('site_banners').delete().eq('id',id);if(error)alert(error.message);else loadAll();}
+async function saveProduct(e){e.preventDefault();const name=$('productName').value.trim();const category_id=$('productCategory').value||null;const price=Number($('productPrice').value);const saleRaw=$('productSalePrice').value.trim();const sale_price=saleRaw?Number(saleRaw):null;const description=$('productDescription').value.trim();const is_available=$('productAvailable').checked;const file=$('productImage').files[0];if(!name||!Number.isFinite(price)||price<0)return alert('Enter a valid name and price.');let image_url=state.editProduct?.image_url||null,image_path=state.editProduct?.image_path||null;try{if(file){const safe=file.name.toLowerCase().replace(/[^a-z0-9._-]/g,'-');const path=`${crypto.randomUUID()}-${safe}`;const up=await supabase.storage.from(BUCKET).upload(path,file,{upsert:false,contentType:file.type});if(up.error)throw up.error;image_url=supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;image_path=path;}const payload={name,category_id,price,sale_price,description,is_available,image_url,image_path};const res=state.editProduct?await supabase.from('products').update(payload).eq('id',state.editProduct.id):await supabase.from('products').insert(payload);if(res.error)throw res.error;if(file&&state.editProduct?.image_path)await supabase.storage.from(BUCKET).remove([state.editProduct.image_path]);$('productModal').classList.remove('open');state.editProduct=null;e.target.reset();await loadAll();}catch(err){alert(`Product save failed: ${err.message}`);}}
+async function saveCategory(e){e.preventDefault();const name=$('categoryName').value.trim();if(!name)return;const res=state.editCategory?await supabase.from('categories').update({name}).eq('id',state.editCategory.id):await supabase.from('categories').insert({name});if(res.error)alert(res.error.message);else{$('categoryModal').classList.remove('open');state.editCategory=null;e.target.reset();await loadAll();}}
+async function saveBanner(e){e.preventDefault();const payload={title:$('bannerTitle').value.trim(),subtitle:$('bannerSubtitle').value.trim(),badge:$('bannerBadge').value.trim(),button_text:$('bannerButtonText').value.trim(),button_link:$('bannerButtonLink').value.trim()||'products.html',image_url:$('bannerImageUrl').value.trim()||null,is_active:$('bannerActive').checked};if(!payload.title)return alert('Banner title is required.');const res=state.editBanner?await supabase.from('site_banners').update(payload).eq('id',state.editBanner.id):await supabase.from('site_banners').insert(payload);if(res.error)alert(res.error.message);else{$('bannerModal').classList.remove('open');state.editBanner=null;e.target.reset();await loadAll();}}
+function nav(){document.querySelectorAll('[data-section]').forEach(b=>b.onclick=()=>{document.querySelectorAll('.admin-view').forEach(v=>v.hidden=true);$(b.dataset.section).hidden=false;document.querySelectorAll('.side-link').forEach(x=>x.classList.remove('active'));b.classList.add('active');});}
 
-const $ = id => document.getElementById(id);
-const BUCKET = "product-images";
-const state = { categories: [], products: [], editingProductId: null, editingCategoryId: null };
-const esc = value => String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
-const money = value => Number(value || 0).toLocaleString("en-PH", { maximumFractionDigits: 2 });
-
-function assertConfig() {
-  if (!SUPABASE_URL.startsWith("https://") || !SUPABASE_URL.includes("supabase.co")) {
-    throw new Error("Supabase Project URL is missing or invalid in assets/js/config.js.");
-  }
-  if (!SUPABASE_ANON_KEY || SUPABASE_ANON_KEY.includes("PASTE_YOUR") || SUPABASE_ANON_KEY.startsWith("YOUR_")) {
-    throw new Error("Supabase Publishable key is missing in assets/js/config.js.");
-  }
-}
-
-async function requireAdmin() {
-  assertConfig();
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  if (userError) throw new Error(`Session check failed: ${userError.message}`);
-  if (!user) {
-    location.href = "./login.html";
-    return null;
-  }
-
-  const { data: profile, error } = await supabase.from("profiles").select("id,email,role").eq("id", user.id).maybeSingle();
-  if (error) throw new Error(`Admin profile check failed: ${error.message}`);
-  if (!profile || profile.role !== "admin") {
-    await supabase.auth.signOut();
-    alert("This account is not authorized as an admin.");
-    location.href = "./login.html";
-    return null;
-  }
-  $("adminEmail").textContent = profile.email || user.email || "";
-  return user;
-}
-
-async function loadCategories() {
-  const { data, error } = await supabase.from("categories").select("id,name,created_at").order("name");
-  if (error) throw new Error(`Category loading failed: ${error.message}`);
-  state.categories = data || [];
-  renderCategories();
-  renderCategorySelect();
-}
-
-async function loadProducts() {
-  const [productsRes, categoriesRes] = await Promise.all([
-    supabase.from("products").select("id,name,description,price,sale_price,is_available,image_url,image_path,category_id,created_at").order("created_at", { ascending: false }),
-    supabase.from("categories").select("id,name")
-  ]);
-  if (productsRes.error) throw new Error(`Product loading failed: ${productsRes.error.message}`);
-  if (categoriesRes.error) throw new Error(`Category loading failed: ${categoriesRes.error.message}`);
-
-  const categoryMap = new Map((categoriesRes.data || []).map(c => [c.id, c.name]));
-  state.products = (productsRes.data || []).map(p => ({ ...p, category_name: categoryMap.get(p.category_id) || "No category" }));
-  renderProducts();
-}
-
-function renderCategorySelect() {
-  $("productCategory").innerHTML = `<option value="">No category</option>` + state.categories.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
-}
-
-function renderCategories() {
-  $("categoriesList").innerHTML = state.categories.length
-    ? state.categories.map(c => `<div class="admin-list-row"><strong>${esc(c.name)}</strong><div class="row-actions"><button class="small-btn" type="button" data-edit-category="${c.id}">Edit</button><button class="small-btn danger" type="button" data-delete-category="${c.id}">Delete</button></div></div>`).join("")
-    : `<div class="admin-empty">No categories yet.</div>`;
-  document.querySelectorAll("[data-edit-category]").forEach(b => b.onclick = () => startEditCategory(b.dataset.editCategory));
-  document.querySelectorAll("[data-delete-category]").forEach(b => b.onclick = () => deleteCategory(b.dataset.deleteCategory));
-}
-
-function renderProducts() {
-  $("productsList").innerHTML = state.products.length
-    ? state.products.map(p => `<div class="admin-product-row"><div class="admin-product-thumb">${p.image_url ? `<img src="${esc(p.image_url)}" alt="">` : `<span>No image</span>`}</div><div class="admin-product-info"><div class="admin-product-top"><strong>${esc(p.name)}</strong><span class="status-pill ${p.is_available ? "available" : "soldout"}">${p.is_available ? "Available" : "Out of Stock"}</span></div><div class="admin-meta">${esc(p.category_name)} · ₱ ${money(p.price)}${p.sale_price != null ? ` · Offer ₱ ${money(p.sale_price)}` : ""}</div><p>${esc(p.description || "")}</p></div><div class="row-actions"><button class="small-btn" type="button" data-edit-product="${p.id}">Edit</button><button class="small-btn danger" type="button" data-delete-product="${p.id}">Delete</button></div></div>`).join("")
-    : `<div class="admin-empty">No products yet. Add your first product above.</div>`;
-  document.querySelectorAll("[data-edit-product]").forEach(b => b.onclick = () => startEditProduct(b.dataset.editProduct));
-  document.querySelectorAll("[data-delete-product]").forEach(b => b.onclick = () => deleteProduct(b.dataset.deleteProduct));
-}
-
-function resetProductForm() {
-  state.editingProductId = null;
-  $("productForm").reset();
-  $("productId").value = "";
-  $("productFormTitle").textContent = "Add Product";
-  $("cancelProductEdit").hidden = true;
-}
-
-function startEditProduct(id) {
-  const p = state.products.find(x => x.id === id); if (!p) return;
-  state.editingProductId = id;
-  $("productId").value = p.id;
-  $("productName").value = p.name || "";
-  $("productCategory").value = p.category_id || "";
-  $("productPrice").value = p.price ?? "";
-  $("productSalePrice").value = p.sale_price ?? "";
-  $("productDescription").value = p.description || "";
-  $("productAvailable").checked = !!p.is_available;
-  $("productImage").value = "";
-  $("productFormTitle").textContent = "Edit Product";
-  $("cancelProductEdit").hidden = false;
-  scrollTo({ top: 0, behavior: "smooth" });
-}
-
-async function saveProduct(e) {
-  e.preventDefault();
-  const name = $("productName").value.trim();
-  const category_id = $("productCategory").value || null;
-  const price = Number($("productPrice").value);
-  const saleRaw = $("productSalePrice").value.trim();
-  const sale_price = saleRaw === "" ? null : Number(saleRaw);
-  const description = $("productDescription").value.trim();
-  const is_available = $("productAvailable").checked;
-  const file = $("productImage").files[0];
-
-  if (!name || !Number.isFinite(price) || price < 0) return alert("Enter a valid product name and price.");
-  if (sale_price !== null && (!Number.isFinite(sale_price) || sale_price < 0)) return alert("Enter a valid offer price or leave it blank.");
-
-  const current = state.products.find(x => x.id === state.editingProductId);
-  let image_url = current?.image_url || null;
-  let image_path = current?.image_path || null;
-
-  try {
-    if (file) {
-      const safe = file.name.toLowerCase().replace(/[^a-z0-9._-]/g, "-");
-      const path = `${crypto.randomUUID()}-${safe}`;
-      const upload = await supabase.storage.from(BUCKET).upload(path, file, { cacheControl: "3600", upsert: false, contentType: file.type });
-      if (upload.error) throw new Error(`Image upload failed: ${upload.error.message}`);
-      image_url = supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
-      image_path = path;
-    }
-
-    const payload = { name, category_id, price, sale_price, description, is_available, image_url, image_path };
-    const result = state.editingProductId
-      ? await supabase.from("products").update(payload).eq("id", state.editingProductId)
-      : await supabase.from("products").insert(payload);
-
-    if (result.error) throw new Error(result.error.message);
-
-    if (file && current?.image_path) await supabase.storage.from(BUCKET).remove([current.image_path]);
-    alert(state.editingProductId ? "Product updated successfully." : "Product added successfully.");
-    resetProductForm();
-    await loadProducts();
-  } catch (error) {
-    console.error(error);
-    alert(`Product save failed: ${error.message}`);
-  }
-}
-
-async function deleteProduct(id) {
-  const p = state.products.find(x => x.id === id); if (!p || !confirm(`Delete "${p.name}"?`)) return;
-  try {
-    if (p.image_path) await supabase.storage.from(BUCKET).remove([p.image_path]);
-    const { error } = await supabase.from("products").delete().eq("id", id);
-    if (error) throw new Error(error.message);
-    await loadProducts();
-  } catch (error) {
-    alert(`Product delete failed: ${error.message}`);
-  }
-}
-
-function resetCategoryForm() {
-  state.editingCategoryId = null;
-  $("categoryForm").reset();
-  $("categoryFormTitle").textContent = "Add Category";
-  $("cancelCategoryEdit").hidden = true;
-}
-
-function startEditCategory(id) {
-  const c = state.categories.find(x => x.id === id); if (!c) return;
-  state.editingCategoryId = id;
-  $("categoryName").value = c.name || "";
-  $("categoryFormTitle").textContent = "Edit Category";
-  $("cancelCategoryEdit").hidden = false;
-  scrollTo({ top: 0, behavior: "smooth" });
-}
-
-async function saveCategory(e) {
-  e.preventDefault();
-  const name = $("categoryName").value.trim();
-  if (!name) return alert("Enter a category name.");
-
-  try {
-    const result = state.editingCategoryId
-      ? await supabase.from("categories").update({ name }).eq("id", state.editingCategoryId)
-      : await supabase.from("categories").insert({ name });
-    if (result.error) throw new Error(result.error.message);
-
-    alert(state.editingCategoryId ? "Category updated successfully." : "Category added successfully.");
-    resetCategoryForm();
-    await loadCategories();
-  } catch (error) {
-    console.error(error);
-    alert(`Category save failed: ${error.message}`);
-  }
-}
-
-async function deleteCategory(id) {
-  const c = state.categories.find(x => x.id === id);
-  if (!c || !confirm(`Delete category "${c.name}"? Products will remain but their category will become empty.`)) return;
-  try {
-    const { error } = await supabase.from("categories").delete().eq("id", id);
-    if (error) throw new Error(error.message);
-    await loadCategories();
-    await loadProducts();
-  } catch (error) {
-    alert(`Category delete failed: ${error.message}`);
-  }
-}
-
-(async () => {
-  try {
-    const user = await requireAdmin();
-    if (!user) return;
-    await loadCategories();
-    await loadProducts();
-  } catch (error) {
-    console.error(error);
-    alert(error.message || "Admin panel could not load.");
-  }
-
-  $("logoutBtn").onclick = async () => {
-    await supabase.auth.signOut();
-    location.href = "./login.html";
-  };
-  $("productForm").onsubmit = saveProduct;
-  $("cancelProductEdit").onclick = resetProductForm;
-  $("categoryForm").onsubmit = saveCategory;
-  $("cancelCategoryEdit").onclick = resetCategoryForm;
-})();
+document.addEventListener('DOMContentLoaded',async()=>{try{const u=await requireAdmin();if(!u)return;await loadAll();nav();$('logoutBtn').onclick=async()=>{await supabase.auth.signOut();location.href='login.html'};$('newCategoryBtn').onclick=()=>{state.editCategory=null;$('categoryForm').reset();$('categoryModal').classList.add('open')};$('newProductBtn').onclick=()=>{state.editProduct=null;$('productForm').reset();$('productAvailable').checked=true;$('productModal').classList.add('open')};$('newBannerBtn').onclick=()=>openBanner(null);$('productForm').onsubmit=saveProduct;$('categoryForm').onsubmit=saveCategory;$('bannerForm').onsubmit=saveBanner;document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>$(b.dataset.close).classList.remove('open'));}catch(e){console.error(e);alert(`Admin dashboard failed to load: ${e.message}`)}});

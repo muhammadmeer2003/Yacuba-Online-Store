@@ -1,0 +1,1 @@
+IMPORTANT: Keep your existing assets/js/config.js with your real Supabase Project URL and Publishable key. Do not replace it with config.example.js.

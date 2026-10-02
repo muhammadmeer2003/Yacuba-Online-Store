@@ -1,70 +1,13 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Admin Dashboard | YACUBA ONLINE STORE</title>
-  <link rel="stylesheet" href="../assets/css/style.css">
-</head>
-<body class="admin-shell">
-  <header class="admin-top">
-    <div class="container admin-top-inner">
-      <div>
-        <strong>YACUBA ONLINE STORE — Admin</strong>
-        <div style="font-size:12px;opacity:.8">Manage categories and products</div>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px">
-        <span id="adminEmail" style="font-size:12px;opacity:.85"></span>
-        <a class="small-btn" href="../index.html">Website</a>
-        <button id="logoutBtn" class="small-btn">Logout</button>
-      </div>
-    </div>
-  </header>
-
-  <main class="container admin-grid">
-    <section class="admin-panel">
-      <h2 id="categoryFormTitle">Add Category</h2>
-      <form id="categoryForm" class="admin-form">
-        <label for="categoryName">Category Name</label>
-        <input id="categoryName" placeholder="e.g. Baked Items" required>
-        <div class="form-actions">
-          <button class="btn btn-primary" type="submit">Save Category</button>
-          <button class="small-btn" id="cancelCategoryEdit" type="button" hidden>Cancel</button>
-        </div>
-      </form>
-      <div style="margin-top:20px"><h3>Categories</h3><div id="categoriesList" class="admin-list"></div></div>
-    </section>
-
-    <section class="admin-panel">
-      <h2 id="productFormTitle">Add Product</h2>
-      <form id="productForm" class="admin-form">
-        <input id="productId" type="hidden">
-        <label for="productName">Product Name</label>
-        <input id="productName" placeholder="e.g. Chicken Nuggets" required>
-        <label for="productCategory">Category</label>
-        <select id="productCategory"></select>
-        <label for="productPrice">Price</label>
-        <input id="productPrice" type="number" min="0" step="0.01" placeholder="350" required>
-        <label for="productSalePrice">Offer Price (optional)</label>
-        <input id="productSalePrice" type="number" min="0" step="0.01" placeholder="299">
-        <label for="productDescription">Description</label>
-        <textarea id="productDescription" placeholder="Short product description"></textarea>
-        <label for="productImage">Product Image</label>
-        <input id="productImage" type="file" accept="image/*">
-        <label class="check-row"><input id="productAvailable" type="checkbox" checked> Available / In Stock</label>
-        <div class="form-actions">
-          <button class="btn btn-primary" type="submit">Save Product</button>
-          <button class="small-btn" id="cancelProductEdit" type="button" hidden>Cancel</button>
-        </div>
-      </form>
-    </section>
-
-    <section class="admin-panel full">
-      <h2>Products</h2>
-      <div id="productsList" class="admin-list"></div>
-    </section>
-  </main>
-
-  <script type="module" src="../assets/js/admin.js"></script>
-</body>
-</html>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admin | YACUBA ONLINE STORE</title><link rel="stylesheet" href="../assets/css/style.css"></head><body class="admin-body"><aside class="sidebar"><div class="side-brand"><span class="logo">Y</span><span>YACUBA ADMIN</span></div><div class="side-links"><button class="side-link active" data-section="overview"><span>▦ Overview</span></button><button class="side-link" data-section="productsView"><span>🛒 Products</span></button><button class="side-link" data-section="categoriesView"><span>⌁ Categories</span></button><button class="side-link" data-section="ordersView"><span>◷ Orders</span></button><button class="side-link" data-section="reviewsView"><span>★ Reviews</span></button><button class="side-link" data-section="feedbackView"><span>✎ Feedback</span></button><button class="side-link" data-section="bannersView"><span>◇ Offers / Banners</span></button></div><div class="side-bottom"><button id="logoutBtn">Logout</button></div></aside><main class="admin-main"><div class="admin-topline"><div class="admin-title"><h1>Dashboard</h1><div class="admin-email" id="adminEmail"></div></div><a href="../index.html" class="btn btn-secondary">View Website</a></div>
+<section class="stats" id="overview"><div class="stat"><span>Products</span><b id="statProducts">0</b></div><div class="stat"><span>Categories</span><b id="statCategories">0</b></div><div class="stat"><span>Active Orders</span><b id="statOrders">0</b></div><div class="stat"><span>Pending Reviews</span><b id="statReviews">0</b></div><div class="stat"><span>New Feedback</span><b id="statFeedback">0</b></div></section>
+<section class="admin-view" id="productsView" hidden><div class="panel"><div class="panel-head"><h2>Products</h2><button class="btn btn-primary" id="newProductBtn">+ Add Product</button></div><div class="data-list" id="productsTable"></div></div></section>
+<section class="admin-view" id="categoriesView" hidden><div class="panel"><div class="panel-head"><h2>Categories</h2><button class="btn btn-primary" id="newCategoryBtn">+ Add Category</button></div><div class="data-list" id="categoriesList"></div></div></section>
+<section class="admin-view" id="ordersView" hidden><div class="panel"><div class="panel-head"><h2>Customer Orders</h2></div><div id="ordersTable"></div></div></section>
+<section class="admin-view" id="reviewsView" hidden><div class="panel"><div class="panel-head"><h2>Reviews</h2></div><div class="data-list" id="reviewsTable"></div></div></section>
+<section class="admin-view" id="feedbackView" hidden><div class="panel"><div class="panel-head"><h2>Customer Feedback</h2></div><div class="data-list" id="feedbackTable"></div></div></section>
+<section class="admin-view" id="bannersView" hidden><div class="panel"><div class="panel-head"><h2>Offers & Homepage Banners</h2><button class="btn btn-primary" id="newBannerBtn">+ Add Banner</button></div><div class="data-list" id="bannersList"></div></div></section>
+</main>
+<div class="modal" id="productModal"><div class="modal-card"><div class="panel-head"><h2>Add / Edit Product</h2><button class="small-btn" data-close="productModal">Close</button></div><form id="productForm" class="form-grid"><label>Name<input id="productName" required></label><label>Category<select id="productCategory"></select></label><label>Price<input id="productPrice" type="number" min="0" step="0.01" required></label><label>Offer Price<input id="productSalePrice" type="number" min="0" step="0.01"></label><label>Description<textarea id="productDescription"></textarea></label><label>Product Image<input id="productImage" type="file" accept="image/*"></label><label class="check"><input id="productAvailable" type="checkbox" checked> Available / In Stock</label><button class="btn btn-primary">Save Product</button></form></div></div>
+<div class="modal" id="categoryModal"><div class="modal-card"><div class="panel-head"><h2>Add / Edit Category</h2><button class="small-btn" data-close="categoryModal">Close</button></div><form id="categoryForm" class="form-grid"><label>Category Name<input id="categoryName" required></label><button class="btn btn-primary">Save Category</button></form></div></div>
+<div class="modal" id="bannerModal"><div class="modal-card"><div class="panel-head"><h2>Add / Edit Banner</h2><button class="small-btn" data-close="bannerModal">Close</button></div><form id="bannerForm" class="form-grid"><label>Title<input id="bannerTitle" required></label><label>Subtitle<textarea id="bannerSubtitle"></textarea></label><label>Badge<input id="bannerBadge" placeholder="Fresh today"></label><label>Button Text<input id="bannerButtonText" value="Shop Products"></label><label>Button Link<input id="bannerButtonLink" value="products.html"></label><label>Image URL (optional)<input id="bannerImageUrl"></label><label class="check"><input id="bannerActive" type="checkbox" checked> Active on homepage</label><button class="btn btn-primary">Save Banner</button></form></div></div>
+<script type="module" src="../assets/js/admin.js"></script></body></html>
