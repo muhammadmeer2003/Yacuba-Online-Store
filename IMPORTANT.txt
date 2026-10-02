@@ -1,0 +1,24 @@
+YACUBA ONLINE STORE - FIX PATCH
+
+IMPORTANT:
+Do NOT replace your existing assets/js/config.js because it contains your Supabase Publishable key.
+
+Replace/Upload these files from this patch into your existing GitHub repository:
+- index.html
+- products.html
+- admin/login.html
+- admin/index.html
+- assets/css/style.css
+- assets/js/admin.js
+- assets/js/products.js
+- assets/js/site.js
+
+Keep your current:
+- assets/js/config.js
+- assets/js/supabase.js
+- supabase/schema.sql
+
+Then commit the changes and wait for Cloudflare to redeploy.
+
+The new public site has a visible Admin Login button.
+The contact information is also displayed directly in the HTML as a fallback.

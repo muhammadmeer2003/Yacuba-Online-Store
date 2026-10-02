@@ -1,2 +1,74 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admin Login</title><link rel="stylesheet" href="../assets/css/style.css"></head><body><main class="login-wrap"><section class="login-card"><div class="eyebrow">Admin Panel</div><h1>Manage Products</h1><p>Sign in with the admin account created in Supabase.</p><div id="loginMessage" class="alert" hidden></div><form id="loginForm"><label for="email">Email</label><input id="email" type="email" autocomplete="username" required><label for="password">Password</label><input id="password" type="password" autocomplete="current-password" required><button class="btn btn-primary" type="submit">Sign In</button></form><p style="margin-top:18px"><a href="../index.html">← Back to website</a></p></section></main>
-<script type="module">import{supabase}from"../assets/js/supabase.js";const f=document.getElementById("loginForm"),m=document.getElementById("loginMessage");const show=t=>{m.hidden=false;m.textContent=t};const{data:{user}}=await supabase.auth.getUser();if(user){const{data:p}=await supabase.from("profiles").select("role").eq("id",user.id).maybeSingle();if(p?.role==="admin")location.href="./index.html"}f.addEventListener("submit",async e=>{e.preventDefault();m.hidden=true;const{error}=await supabase.auth.signInWithPassword({email:document.getElementById("email").value.trim(),password:document.getElementById("password").value});if(error)return show(error.message);const{data:{user:u}}=await supabase.auth.getUser();const{data:p,error:pe}=await supabase.from("profiles").select("role").eq("id",u.id).single();if(pe||p?.role!=="admin"){await supabase.auth.signOut();return show("This account is not authorized as an admin.")}location.href="./index.html"})</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Admin Login | YACUBA ONLINE STORE</title>
+  <link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+  <main class="login-wrap">
+    <section class="login-card">
+      <div class="eyebrow">YACUBA ONLINE STORE</div>
+      <h1>Admin Login</h1>
+      <p>Sign in to manage products and categories.</p>
+
+      <div id="loginMessage" class="alert" hidden></div>
+
+      <form id="loginForm">
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="username" placeholder="Admin email" required>
+
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password" placeholder="Password" required>
+
+        <button class="btn btn-primary" type="submit">Sign In</button>
+      </form>
+
+      <p style="margin-top:18px"><a href="../index.html">← Back to YACUBA ONLINE STORE</a></p>
+    </section>
+  </main>
+
+  <script type="module">
+    import { supabase } from "../assets/js/supabase.js";
+
+    const form = document.getElementById("loginForm");
+    const msg = document.getElementById("loginMessage");
+    const show = text => { msg.hidden = false; msg.textContent = text; };
+
+    const url = "";
+    if (location.protocol === "file:") show("Please open the deployed website through Cloudflare, not the HTML file directly.");
+
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+      msg.hidden = true;
+
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+
+      try {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+
+        const { data: { user } } = await supabase.auth.getUser();
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .single();
+
+        if (profileError) throw new Error(`Profile check failed: ${profileError.message}`);
+        if (profile?.role !== "admin") {
+          await supabase.auth.signOut();
+          throw new Error("This account exists but is not assigned the admin role.");
+        }
+
+        location.href = "./index.html";
+      } catch (error) {
+        console.error(error);
+        show(error.message || "Login failed.");
+      }
+    });
+  </script>
+</body>
+</html>
