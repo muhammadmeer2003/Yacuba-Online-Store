@@ -52,3 +52,7 @@ Edit `assets/js/config.js` to change the mart name, tagline, phone, WhatsApp, ad
 
 ## Scope
 This version intentionally focuses on product display and product/category management. Cart, checkout, online payment and order tracking are not included.
+
+
+
+
