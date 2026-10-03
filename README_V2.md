@@ -43,3 +43,19 @@ Orders are created using `place_order()` RPC, which calculates the product price
 `/admin/login.html`
 
 The public navigation also contains an Admin button.
+
+## Admin2026 login setup
+
+The admin login page is preconfigured for the existing YACUBA Supabase project and defaults the email field to:
+
+`Admin2026@gmail.com`
+
+Do not put a password in code. Use the password you created in Supabase Authentication.
+
+After creating the user, run:
+
+`supabase/set_admin_Admin2026.sql`
+
+The query must return `Admin2026@gmail.com | admin`.
+
+Keep your existing `assets/js/config.js` if you already have one with the correct Supabase configuration. The standalone admin login does not depend on that file.
