@@ -1,5 +1,5 @@
--- Run this once after creating Admin2026@gmail.com in Supabase Authentication.
--- This gives the account access to the YACUBA admin dashboard.
+-- YACUBA ONLINE STORE — set the new admin account to admin
+-- Create Admin2026@gmail.com first in Supabase Authentication > Users.
 update public.profiles
 set role = 'admin'
 where lower(email) = lower('Admin2026@gmail.com');
