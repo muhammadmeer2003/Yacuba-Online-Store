@@ -30,4 +30,17 @@ async function saveCategory(e){e.preventDefault();const name=$('categoryName').v
 async function saveBanner(e){e.preventDefault();const payload={title:$('bannerTitle').value.trim(),subtitle:$('bannerSubtitle').value.trim(),badge:$('bannerBadge').value.trim(),button_text:$('bannerButtonText').value.trim(),button_link:$('bannerButtonLink').value.trim()||'products.html',image_url:$('bannerImageUrl').value.trim()||null,is_active:$('bannerActive').checked};if(!payload.title)return alert('Banner title is required.');const res=state.editBanner?await supabase.from('site_banners').update(payload).eq('id',state.editBanner.id):await supabase.from('site_banners').insert(payload);if(res.error)alert(res.error.message);else{$('bannerModal').classList.remove('open');state.editBanner=null;e.target.reset();await loadAll();}}
 function nav(){document.querySelectorAll('[data-section]').forEach(b=>b.onclick=()=>{document.querySelectorAll('.admin-view').forEach(v=>v.hidden=true);$(b.dataset.section).hidden=false;document.querySelectorAll('.side-link').forEach(x=>x.classList.remove('active'));b.classList.add('active');});}
 
-document.addEventListener('DOMContentLoaded',async()=>{try{const u=await requireAdmin();if(!u)return;await loadAll();nav();$('logoutBtn').onclick=async()=>{await supabase.auth.signOut();location.href='login.html'};$('newCategoryBtn').onclick=()=>{state.editCategory=null;$('categoryForm').reset();$('categoryModal').classList.add('open')};$('newProductBtn').onclick=()=>{state.editProduct=null;$('productForm').reset();$('productAvailable').checked=true;$('productModal').classList.add('open')};$('newBannerBtn').onclick=()=>openBanner(null);$('productForm').onsubmit=saveProduct;$('categoryForm').onsubmit=saveCategory;$('bannerForm').onsubmit=saveBanner;document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>$(b.dataset.close).classList.remove('open'));}catch(e){console.error(e);alert(`Admin dashboard failed to load: ${e.message}`)}});
+document.addEventListener('DOMContentLoaded',async()=>{
+  const u=await requireAdmin();
+  if(!u)return;
+  nav();
+  $('logoutBtn').onclick=async()=>{await supabase.auth.signOut();location.href='login.html'};
+  $('newCategoryBtn').onclick=()=>{state.editCategory=null;$('categoryForm').reset();$('categoryModal').classList.add('open')};
+  $('newProductBtn').onclick=()=>{state.editProduct=null;$('productForm').reset();$('productAvailable').checked=true;$('productModal').classList.add('open')};
+  $('newBannerBtn').onclick=()=>openBanner(null);
+  $('productForm').onsubmit=saveProduct;
+  $('categoryForm').onsubmit=saveCategory;
+  $('bannerForm').onsubmit=saveBanner;
+  document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>$(b.dataset.close).classList.remove('open'));
+  try{ await loadAll(); }catch(e){ console.error('Data load failed:',e); }
+});
