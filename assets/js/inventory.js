@@ -2,7 +2,7 @@ import { supabase } from "./supabase.js";
 import { STORE } from "./config.js";
 import { esc, money } from "./site.js";
 const $ = id => document.getElementById(id);
-const S = { items: [], moves: [], products: [], edit: null, rep: null };
+export const S = { items: [], moves: [], products: [], edit: null, rep: null };
 const n = v => Number(v || 0), f2 = v => Number(n(v).toFixed(2)), today = () => new Date().toISOString().slice(0, 10);
 const TYPE = { purchase: "Stock In", sale: "Sale", adjustment: "Adjustment" };
 
@@ -15,15 +15,15 @@ async function all(table, order) {
   }
   return out;
 }
-async function load() {
+export async function load() {
   try {
     const [i, m, p] = await Promise.all([all("inventory_items", "created_at"), all("stock_movements", "movement_date"), supabase.from("products").select("id,name").order("name")]);
     S.items = i; S.moves = m; S.products = p.data || [];
-    render(); report();
+    render(); report(); document.dispatchEvent(new Event("inv:loaded"));
   } catch (e) { console.error(e); $("invList").innerHTML = `<div class="empty-admin">Inventory not ready: run supabase/inventory_v3.sql in Supabase first.<br><small>${esc(e.message)}</small></div>`; }
 }
 // stock + cost per item, counting movements up to date `to`
-function calc(to) {
+export function calc(to) {
   const r = {};
   S.items.forEach(i => r[i.id] = { i, pq: 0, pc: 0, sq: 0, sr: 0, aq: 0 });
   S.moves.forEach(m => {
@@ -41,7 +41,7 @@ function render() {
   $("invLow").textContent = c.filter(x => x.stock <= n(x.i.reorder_level)).length;
   $("invUnits").textContent = f2(c.reduce((t, x) => t + x.stock, 0));
   $("invValue").textContent = money(c.reduce((t, x) => t + x.value, 0));
-  $("invList").innerHTML = c.filter(x => !s || `${x.i.sku} ${x.i.name}`.toLowerCase().includes(s)).map(x => {
+  $("invList").innerHTML = c.filter(x => !s || `${x.i.sku} ${x.i.name} ${x.i.barcode || ""}`.toLowerCase().includes(s)).map(x => {
     const st = x.stock <= 0 ? "Out" : x.stock <= n(x.i.reorder_level) ? "Low" : "In stock";
     return `<div class="data-row"><div class="grow"><strong>${esc(x.i.sku)} · ${esc(x.i.name)}</strong><span>${f2(x.stock)} ${esc(x.i.unit)} · avg cost ${money(x.avg)} · sell ${money(x.i.sell_price)} · value ${money(x.value)}${x.i.category ? " · " + esc(x.i.category) : ""}</span></div><span class="status ${st === "In stock" ? "good" : "bad"}">${st}</span><div class="row-actions"><button class="small-btn" data-mv="purchase" data-id="${x.i.id}">+ Stock In</button><button class="small-btn" data-mv="sale" data-id="${x.i.id}">Sale</button><button class="small-btn" data-mv="adjustment" data-id="${x.i.id}">Adjust</button><button class="small-btn" data-edit="${x.i.id}">Edit</button><button class="small-btn danger" data-del="${x.i.id}">Delete</button></div></div>`;
   }).join("") || `<div class="empty-admin">No inventory items yet. Click "+ Add Item".</div>`;
@@ -58,15 +58,15 @@ function render() {
 function openItem(id) {
   const i = S.items.find(x => x.id === id); S.edit = i || null;
   $("iProduct").innerHTML = '<option value="">Not linked</option>' + S.products.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join("");
-  $("iSku").value = i?.sku || `SKU-${String(S.items.length + 1).padStart(3, "0")}`; $("iName").value = i?.name || ""; $("iCategory").value = i?.category || "";
+  $("iSku").value = i?.sku || `SKU-${String(S.items.length + 1).padStart(3, "0")}`; $("iBarcode").value = i?.barcode || ""; $("iName").value = i?.name || ""; $("iCategory").value = i?.category || "";
   $("iUnit").value = i?.unit || "pcs"; $("iProduct").value = i?.product_id || ""; $("iPrice").value = i?.sell_price ?? 0; $("iReorder").value = i?.reorder_level ?? 5; $("iNotes").value = i?.notes || "";
   $("itemModal").classList.add("open");
 }
 async function saveItem(e) {
   e.preventDefault();
-  const p = { sku: $("iSku").value.trim().toUpperCase(), name: $("iName").value.trim(), category: $("iCategory").value.trim() || null, unit: $("iUnit").value.trim() || "pcs", product_id: $("iProduct").value || null, sell_price: n($("iPrice").value), reorder_level: n($("iReorder").value), notes: $("iNotes").value.trim() || null };
+  const p = { barcode: $("iBarcode").value.trim() || null, sku: $("iSku").value.trim().toUpperCase(), name: $("iName").value.trim(), category: $("iCategory").value.trim() || null, unit: $("iUnit").value.trim() || "pcs", product_id: $("iProduct").value || null, sell_price: n($("iPrice").value), reorder_level: n($("iReorder").value), notes: $("iNotes").value.trim() || null };
   const r = S.edit ? await supabase.from("inventory_items").update(p).eq("id", S.edit.id) : await supabase.from("inventory_items").insert(p);
-  if (r.error) return alert(r.error.code === "23505" ? "This SKU already exists." : r.error.message);
+  if (r.error) return alert(r.error.code === "23505" ? "This SKU or barcode already exists." : r.error.message);
   $("itemModal").classList.remove("open"); await load();
 }
 async function delItem(id) {

@@ -72,3 +72,12 @@ Run `supabase/inventory_v3.sql` in Supabase SQL Editor (after the other SQL file
 - Link an item to a website product: completed online orders auto-deduct stock and count as sales
 - Admin > Reports: date range, purchases / sales / profit / stock value, Print or Save as PDF, Download CSV (opens in Excel)
 - Logo added to navbar, footer, admin and login (files in assets/img/)
+
+## V4 (Sidebar fix, Scanner, Receiving/Dispatching/Count, Settings)
+Run `supabase/settings_v4.sql` in Supabase SQL Editor (after inventory_v3.sql).
+- Fixed: admin sidebar sections now open one at a time (Dashboard shows only the dashboard)
+- Products & SKU: SKU + barcode on every product
+- Receiving, Dispatching (prints sales receipt), Ending Inventory (count, apply, print)
+- Barcode scanner: USB/Bluetooth scanners work as a keyboard - click the scan box and scan
+- Receipt: uses the browser print dialog - choose your thermal/normal printer
+- Settings: delivery fee, free-delivery amount, minimum order, delivery areas, accept orders on/off, receipt footer

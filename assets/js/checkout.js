@@ -9,8 +9,26 @@ function render() {
   $("checkoutItems").innerHTML = cart.length
     ? cart.map(i => `<div class="checkout-item"><div><strong>${esc(i.name)}</strong><span>${i.quantity} × ${money(i.price)}</span></div><b>${money(i.quantity * i.price)}</b></div>`).join("")
     : `<div class="empty-bag"><h3>Your bag is empty</h3><a class="btn btn-primary" href="products.html">Browse Products</a></div>`;
-  $("checkoutTotal").textContent = money(cartSubtotal());
-  $("placeOrder").disabled = !cart.length;
+  const sub = cartSubtotal(), f = cart.length ? fee() : 0;
+  $("feeLines").innerHTML = cart.length ? `<div style="display:flex;justify-content:space-between"><span>Subtotal</span><span>${money(sub)}</span></div><div style="display:flex;justify-content:space-between"><span>Delivery</span><span>${f ? money(f) : "Free"}</span></div>${Number(cfg.min_order) > sub ? `<div style="color:var(--red)">Minimum order is ${money(cfg.min_order)}</div>` : ""}` : "";
+  $("areaField").hidden = !((cfg.delivery_zones || []).length && $("paymentMethod").value !== "Cash on Pickup");
+  $("checkoutTotal").textContent = money(sub + f);
+  $("placeOrder").disabled = !cart.length || cfg.accepting_orders === false;
+}
+let cfg = { delivery_fee: 0, free_delivery_above: 0, min_order: 0, delivery_zones: [], accepting_orders: true };
+function fee() {
+  if ($("paymentMethod").value === "Cash on Pickup") return 0;
+  let f = Number(cfg.delivery_fee || 0); const z = cfg.delivery_zones || [];
+  if (z.length) { const a = z.find(x => x.name === $("deliveryArea").value); if (a) f = Number(a.fee); }
+  if (Number(cfg.free_delivery_above) > 0 && cartSubtotal() >= Number(cfg.free_delivery_above)) f = 0;
+  return f;
+}
+async function loadCfg() {
+  const { data } = await supabase.from("store_settings").select("*").eq("id", 1).maybeSingle();
+  if (data) cfg = data;
+  const z = Array.isArray(cfg.delivery_zones) ? cfg.delivery_zones : [];
+  $("deliveryArea").innerHTML = z.map(x => `<option value="${esc(x.name)}">${esc(x.name)} - ${money(x.fee)}</option>`).join("");
+  if (cfg.accepting_orders === false) { const n = $("syncNote"); n.hidden = false; n.textContent = "The store is not taking online orders right now. Please contact us on WhatsApp."; }
 }
 
 // Refresh prices / availability from the database so the customer sees the real total.
@@ -40,8 +58,9 @@ async function syncCart() {
 document.addEventListener("DOMContentLoaded", async () => {
   renderStoreChrome();
   render();
-  await syncCart();
+  await Promise.all([syncCart(), loadCfg()]);
   render();
+  ["paymentMethod", "deliveryArea"].forEach(id => $(id).addEventListener("change", render));
   window.addEventListener("cart:updated", render);
 
   $("checkoutForm").addEventListener("submit", async e => {
@@ -54,12 +73,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       whatsapp: $("customerWhatsApp").value.trim(),
       address: $("customerAddress").value.trim(),
       notes: $("orderNotes").value.trim(),
-      payment_method: $("paymentMethod").value,
+      payment_method: $("paymentMethod").value, delivery_area: $("deliveryArea").value || "",
       items: cart.map(i => ({ product_id: i.id, quantity: i.quantity }))
     };
     if (!payload.customer_name || !payload.phone || !payload.address) return alert("Please fill your name, phone and delivery address.");
     if (payload.phone.replace(/\D/g, "").length < 7) return alert("Please enter a valid phone number.");
 
+    if (Number(cfg.min_order) > cartSubtotal()) return alert(`Minimum order is ${money(cfg.min_order)}.`);
     const btn = $("placeOrder");
     btn.disabled = true; btn.textContent = "Placing order...";
     try {
