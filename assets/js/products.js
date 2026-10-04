@@ -2,7 +2,7 @@ import { supabase } from "./supabase.js";
 import { addToCart } from "./cart.js";
 import { esc, money, renderStoreChrome } from "./site.js";
 
-const state = { products: [], categories: [], category: "all", search: "" };
+const state = { products: [], categories: [], category: "all", search: "", sort: "new" };
 const $ = id => document.getElementById(id);
 
 function card(p) {
@@ -36,6 +36,10 @@ function render() {
     (state.category === "all" || p.category_id === state.category) &&
     (!q || p.name.toLowerCase().includes(q) || String(p.description || "").toLowerCase().includes(q))
   );
+  const eff = p => Number(p.sale_price ?? p.price ?? 0);
+  if (state.sort === "low") list.sort((a, b) => eff(a) - eff(b));
+  else if (state.sort === "high") list.sort((a, b) => eff(b) - eff(a));
+  else if (state.sort === "offer") list.sort((a, b) => (b.sale_price != null) - (a.sale_price != null));
   $("productsGrid").innerHTML = list.length ? list.map(card).join("") : `<div class="empty-state"><h3>No products found</h3><p>Try another search or category.</p></div>`;
   $("resultCount").textContent = `${list.length} product${list.length === 1 ? "" : "s"}`;
   document.querySelectorAll("[data-add]").forEach(b => b.onclick = () => {
@@ -58,10 +62,13 @@ async function load() {
   const map = new Map((c.data || []).map(x => [x.id, x.name]));
   state.categories = c.data || [];
   state.products = (p.data || []).map(x => ({...x, category_name: map.get(x.category_id) || "Product"}));
+  const wanted = new URLSearchParams(location.search).get("category");
+  if (wanted && state.categories.some(x => x.id === wanted)) state.category = wanted;
   renderFilters(); render(); renderStoreChrome();
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
   $("productSearch").addEventListener("input", e => { state.search = e.target.value; render(); });
+  $("productSort")?.addEventListener("change", e => { state.sort = e.target.value; render(); });
   try { await load(); } catch (e) { console.error(e); $("productsGrid").innerHTML = `<div class="empty-state"><h3>Products are temporarily unavailable</h3><p>${esc(e.message)}</p></div>`; }
 });

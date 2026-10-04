@@ -44,18 +44,23 @@ Orders are created using `place_order()` RPC, which calculates the product price
 
 The public navigation also contains an Admin button.
 
-## Admin2026 login setup
 
-The admin login page is preconfigured for the existing YACUBA Supabase project and defaults the email field to:
+## V2.1 (fixes + enhancements)
+Run `supabase/fix_v2_1.sql` in Supabase SQL Editor AFTER `upgrade_v2.sql`.
 
-`Admin2026@gmail.com`
+Fixed:
+- Bag drawer never opened (Bag button now opens the slide-out bag, Esc closes it)
+- Home category tiles now open Products already filtered (`?category=`)
+- Security: customers could insert orders directly with any price - that policy is removed
+- Checkout validates empty bag, quantity limit, bad product ids, field lengths
+- Home page no longer goes blank if banners/reviews fail to load
+- Order success page status now works (safe `track_order` function)
+- Cart qty limit (99), cart prices refreshed from DB at checkout, unavailable items removed automatically
 
-Do not put a password in code. Use the password you created in Supabase Authentication.
-
-After creating the user, run:
-
-`supabase/set_admin_Admin2026.sql`
-
-The query must return `Admin2026@gmail.com | admin`.
-
-Keep your existing `assets/js/config.js` if you already have one with the correct Supabase configuration. The standalone admin login does not depend on that file.
+Enhanced:
+- Products: sorting (price / offers), offer price shown on home cards
+- Featured products (admin checkbox) shown first in Popular Products
+- Admin orders: payment method, notes, Call and WhatsApp buttons
+- Admin: offer price must be lower than normal price; login redirects if already signed in
+- Success page: "Send order on WhatsApp" button with order number
+- Favicon, meta description, better mobile nav, focus styles, hover effects

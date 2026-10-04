@@ -9,7 +9,7 @@ export const STORE = {
   MART_PHONE: "09223312273",
   MART_WHATSAPP: "09223312273",
   MART_ADDRESS: "Purok Mahogany, Crossing Capulay, Tayud, Liloan, Cebu, Philippines",
-  MART_EMAIL: "Admin2026@gmail.com",
+  MART_EMAIL: "abucayjenny5@gmail.com",
   MART_INSTAGRAM: "",
   MART_FACEBOOK: "",
   MART_LOGO: ""

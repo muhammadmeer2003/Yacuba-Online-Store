@@ -1,28 +1,37 @@
 import { getCart, getCartCount, setCartQuantity, removeFromCart, cartSubtotal } from "./cart.js";
-import { money, esc, renderStoreChrome } from "./site.js";
+import { money, esc } from "./site.js";
 
 const $ = id => document.getElementById(id);
+
 export function renderBag() {
-  const cart = getCart();
   const wrap = $("bagItems");
   if (!wrap) return;
+  const cart = getCart();
   wrap.innerHTML = cart.length ? cart.map(i => `<div class="bag-item">
     <div class="bag-img">${i.image_url ? `<img src="${esc(i.image_url)}" alt="">` : "Y"}</div>
     <div class="bag-main"><strong>${esc(i.name)}</strong><span>${money(i.price)}</span>
-      <div class="qty-row"><button type="button" data-dec="${i.id}">−</button><b>${i.quantity}</b><button type="button" data-inc="${i.id}">+</button><button class="remove-link" type="button" data-remove="${i.id}">Remove</button></div>
+      <div class="qty-row"><button type="button" data-dec="${esc(i.id)}" aria-label="Decrease quantity">−</button><b>${i.quantity}</b><button type="button" data-inc="${esc(i.id)}" aria-label="Increase quantity">+</button><button class="remove-link" type="button" data-remove="${esc(i.id)}">Remove</button></div>
     </div>
   </div>`).join("") : `<div class="empty-bag"><div class="empty-icon">🛍</div><h3>Your bag is empty</h3><p>Add your favourite items and continue to checkout.</p></div>`;
-  $("bagTotal").textContent = money(cartSubtotal());
-  document.querySelectorAll("[data-inc]").forEach(b => b.onclick = () => { const i = cart.find(x => x.id === b.dataset.inc); setCartQuantity(i.id, i.quantity + 1); renderBag(); });
-  document.querySelectorAll("[data-dec]").forEach(b => b.onclick = () => { const i = cart.find(x => x.id === b.dataset.dec); setCartQuantity(i.id, i.quantity - 1); renderBag(); });
-  document.querySelectorAll("[data-remove]").forEach(b => b.onclick = () => { removeFromCart(b.dataset.remove); renderBag(); });
+  if ($("bagTotal")) $("bagTotal").textContent = money(cartSubtotal());
+  const checkoutBtn = document.querySelector(".bag-foot .btn");
+  if (checkoutBtn) { checkoutBtn.style.opacity = cart.length ? "1" : ".45"; checkoutBtn.style.pointerEvents = cart.length ? "auto" : "none"; }
+  wrap.querySelectorAll("[data-inc]").forEach(b => b.onclick = () => { const i = getCart().find(x => x.id === b.dataset.inc); if (i) setCartQuantity(i.id, i.quantity + 1); });
+  wrap.querySelectorAll("[data-dec]").forEach(b => b.onclick = () => { const i = getCart().find(x => x.id === b.dataset.dec); if (i) setCartQuantity(i.id, i.quantity - 1); });
+  wrap.querySelectorAll("[data-remove]").forEach(b => b.onclick = () => removeFromCart(b.dataset.remove));
   document.querySelectorAll("[data-cart-count]").forEach(el => el.textContent = getCartCount());
 }
+
+function openBag() { $("bagDrawer")?.classList.add("open"); renderBag(); }
+function closeBag() { $("bagDrawer")?.classList.remove("open"); }
+
 export function bindBag() {
-  $("bagButton")?.addEventListener("click", () => { $("bagDrawer").classList.add("open"); renderBag(); });
-  $("closeBag")?.addEventListener("click", () => $("bagDrawer").classList.remove("open"));
-  $("bagOverlay")?.addEventListener("click", () => $("bagDrawer").classList.remove("open"));
-  renderBag();
+  if (!$("bagDrawer")) return;
+  $("bagButton")?.addEventListener("click", e => { e.preventDefault(); openBag(); });
+  $("closeBag")?.addEventListener("click", closeBag);
+  $("bagOverlay")?.addEventListener("click", closeBag);
+  document.addEventListener("keydown", e => { if (e.key === "Escape") closeBag(); });
   window.addEventListener("cart:updated", renderBag);
+  renderBag();
 }
 document.addEventListener("DOMContentLoaded", bindBag);

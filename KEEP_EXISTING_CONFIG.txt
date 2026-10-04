@@ -1,9 +1,1 @@
-CONFIG IS INCLUDED IN THIS PACKAGE.
-
-assets/js/config.js already contains:
-- YACUBA Supabase Project URL
-- Supabase Publishable key
-- Admin email: Admin2026@gmail.com
-- YACUBA public business email: abucayjenny5@gmail.com
-
-Do NOT put a Supabase secret/service-role key into the frontend.
+IMPORTANT: Keep your existing assets/js/config.js with your real Supabase Project URL and Publishable key. Do not replace it with config.example.js.
