@@ -64,3 +64,11 @@ Enhanced:
 - Admin: offer price must be lower than normal price; login redirects if already signed in
 - Success page: "Send order on WhatsApp" button with order number
 - Favicon, meta description, better mobile nav, focus styles, hover effects
+
+
+## V3 (Inventory + Reports + Logo)
+Run `supabase/inventory_v3.sql` in Supabase SQL Editor (after the other SQL files).
+- Admin > Inventory: SKU items, Stock In (date, qty, cost, supplier), Sale, Adjust, low-stock alerts, stock history
+- Link an item to a website product: completed online orders auto-deduct stock and count as sales
+- Admin > Reports: date range, purchases / sales / profit / stock value, Print or Save as PDF, Download CSV (opens in Excel)
+- Logo added to navbar, footer, admin and login (files in assets/img/)
