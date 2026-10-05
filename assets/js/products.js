@@ -1,5 +1,5 @@
 import { supabase } from "./supabase.js";
-import { addToCart } from "./cart.js";
+import { addToCart, weightBox, wireWeight, chosenQty, isKg } from "./cart.js";
 import { esc, money, renderStoreChrome } from "./site.js";
 
 const state = { products: [], categories: [], category: "all", search: "", sort: "new" };
@@ -17,7 +17,7 @@ function card(p) {
       <span class="eyebrow-sm">${esc(p.category_name || "Product")}</span>
       <h3>${esc(p.name)}</h3>
       <p>${esc(p.description || "Fresh quality product from YACUBA ONLINE STORE.")}</p>
-      <div class="price-line"><div>${old}<strong>${money(price)}</strong></div>
+      ${weightBox(p)}<div class="price-line"><div>${old}<strong>${money(price)}</strong>${isKg(p) ? "<small> / kg</small>" : ""}</div>
         <button class="bag-btn" type="button" data-add="${p.id}" ${!p.is_available ? "disabled" : ""}>${p.is_available ? "Add to Bag" : "Unavailable"}</button>
       </div>
     </div>
@@ -42,9 +42,10 @@ function render() {
   else if (state.sort === "offer") list.sort((a, b) => (b.sale_price != null) - (a.sale_price != null));
   $("productsGrid").innerHTML = list.length ? list.map(card).join("") : `<div class="empty-state"><h3>No products found</h3><p>Try another search or category.</p></div>`;
   $("resultCount").textContent = `${list.length} product${list.length === 1 ? "" : "s"}`;
+  wireWeight();
   document.querySelectorAll("[data-add]").forEach(b => b.onclick = () => {
     const p = state.products.find(x => x.id === b.dataset.add); if (!p) return;
-    addToCart({...p, category_name: p.category_name});
+    addToCart({...p, category_name: p.category_name}, chosenQty(p));
     b.textContent = "Added ✓"; setTimeout(() => b.textContent = "Add to Bag", 900);
     openBagToast(p.name);
   });
@@ -56,7 +57,7 @@ function openBagToast(name) {
 async function load() {
   const [c, p] = await Promise.all([
     supabase.from("categories").select("id,name").order("name"),
-    supabase.from("products").select("id,name,description,price,sale_price,is_available,image_url,category_id").order("created_at", {ascending:false})
+    supabase.from("products").select("id,name,description,price,sale_price,is_available,image_url,category_id,unit,qty_step").order("created_at", {ascending:false})
   ]);
   if (c.error) throw c.error; if (p.error) throw p.error;
   const map = new Map((c.data || []).map(x => [x.id, x.name]));
