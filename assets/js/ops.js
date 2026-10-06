@@ -8,7 +8,7 @@ let cfg = { receipt_footer: "Thank you for shopping with us!" };
 const find = code => { const c = String(code).trim().toUpperCase(); return c && S.items.find(i => (i.barcode && i.barcode.toUpperCase() === c) || i.sku.toUpperCase() === c); };
 const SCAN = id => `<div class="scanbox"><span>▌▌▌</span><input id="${id}" placeholder="Click here, then scan barcode (or type SKU + Enter)" autocomplete="off"></div>`;
 
-function doPrint(html, receipt) {
+export function doPrint(html, receipt) {
   $("printArea").innerHTML = html; let st;
   if (receipt) { st = document.createElement("style"); st.textContent = "@page{size:80mm auto;margin:3mm}"; document.head.appendChild(st); }
   document.body.classList.add("print-report");
@@ -21,16 +21,17 @@ function receipt(title, ref, date, who, whoLabel, lines) {
 }
 const docSec = (id, title, who, ph, label) => `<section class="admin-view" id="${id}View" hidden><div class="panel"><div class="panel-head"><h2>${title}</h2></div>
 <div class="form-grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))"><label>${who}<input id="${id}Who" placeholder="${ph}"></label><label>Date<input id="${id}Date" type="date"></label><label>Reference / Invoice no.<input id="${id}Ref" placeholder="Auto if empty"></label></div>${SCAN(id + "Scan")}
-<div class="rep-scroll"><table class="rep-table"><thead><tr><th>SKU</th><th>Item</th><th class="r">Qty</th><th class="r">${label}</th><th class="r">Total</th><th></th></tr></thead><tbody id="${id}Lines"></tbody></table></div>
+<div class="rep-scroll"><table class="rep-table"><thead><tr><th>SKU</th><th>Item</th><th class="r">Qty</th><th class="r">${label}</th>${id === "rcv" ? '<th class="r">Expiry (optional)</th>' : ""}<th class="r">Total</th><th></th></tr></thead><tbody id="${id}Lines"></tbody></table></div>
 <div class="panel-head"><b id="${id}Total"></b><div class="row-actions"><button class="btn btn-secondary" id="${id}Clear">Clear</button><button class="btn btn-secondary" id="${id}Save">Save</button><button class="btn btn-primary" id="${id}Print">Save & Print</button></div></div></div></section>`;
 
 function doc(id, inn) {
   const L = [], el = s => $(id + s);
   const draw = () => {
-    el("Lines").innerHTML = L.map((l, k) => `<tr><td>${esc(l.item.sku)}</td><td>${esc(l.item.name)}</td><td class="r"><input class="qin" type="number" step="0.01" min="0.01" value="${l.qty}" data-q="${k}"></td><td class="r"><input class="qin" type="number" step="0.01" min="0" value="${l.price}" data-p="${k}"></td><td class="r">${money(l.qty * l.price)}</td><td><button class="small-btn danger" data-x="${k}">✕</button></td></tr>`).join("") || `<tr><td colspan="6" class="muted">Scan an item to begin.</td></tr>`;
+    el("Lines").innerHTML = L.map((l, k) => `<tr><td>${esc(l.item.sku)}</td><td>${esc(l.item.name)}</td><td class="r"><input class="qin" type="number" step="0.01" min="0.01" value="${l.qty}" data-q="${k}"></td><td class="r"><input class="qin" type="number" step="0.01" min="0" value="${l.price}" data-p="${k}"></td>${inn ? `<td class="r"><input class="qin" style="width:135px" type="date" data-e="${k}" value="${l.exp || ""}"></td>` : ""}<td class="r">${money(l.qty * l.price)}</td><td><button class="small-btn danger" data-x="${k}">✕</button></td></tr>`).join("") || `<tr><td colspan="7" class="muted">Scan an item to begin.</td></tr>`;
     el("Total").textContent = "Total " + money(L.reduce((t, l) => t + l.qty * l.price, 0));
     el("Lines").querySelectorAll("[data-q]").forEach(i => i.onchange = () => { L[i.dataset.q].qty = n(i.value) || 1; draw(); });
     el("Lines").querySelectorAll("[data-p]").forEach(i => i.onchange = () => { L[i.dataset.p].price = n(i.value); draw(); });
+    el("Lines").querySelectorAll("[data-e]").forEach(i => i.onchange = () => { L[i.dataset.e].exp = i.value; });
     el("Lines").querySelectorAll("[data-x]").forEach(b => b.onclick = () => { L.splice(b.dataset.x, 1); draw(); });
   };
   el("Scan").addEventListener("keydown", e => {
@@ -46,7 +47,7 @@ function doc(id, inn) {
     if (!L.length) return alert("Scan at least one item.");
     const date = el("Date").value || today(), who = el("Who").value.trim(), ref = el("Ref").value.trim() || `${inn ? "RCV" : "DSP"}-${date.replace(/-/g, "")}-${Math.floor(1000 + Math.random() * 9000)}`;
     if (!inn) { const c = calc(), bad = L.filter(l => l.qty > (c[l.item.id]?.stock || 0)); if (bad.length && !confirm(`Not enough stock for: ${bad.map(b => b.item.name).join(", ")}. Continue?`)) return; }
-    const { error } = await supabase.from("stock_movements").insert(L.map(l => ({ item_id: l.item.id, movement_type: inn ? "purchase" : "sale", movement_date: date, quantity: l.qty, unit_price: l.price, supplier: who || null, reference: ref, notes: inn ? "Receiving" : "Dispatch" })));
+    const { error } = await supabase.from("stock_movements").insert(L.map(l => ({ item_id: l.item.id, movement_type: inn ? "purchase" : "sale", movement_date: date, quantity: l.qty, unit_price: l.price, supplier: who || null, reference: ref, notes: inn ? "Receiving" : "Dispatch", expiry_date: inn ? (l.exp || null) : null })));
     if (error) return alert(error.message);
     if (pr) doPrint(receipt(inn ? "RECEIVING SLIP" : "SALES RECEIPT / DISPATCH", ref, date, who, inn ? "Supplier" : "Customer", L.map(l => ({ name: l.item.name, qty: l.qty, price: l.price }))), true);
     reset(); await load();

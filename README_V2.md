@@ -85,3 +85,9 @@ Run `supabase/settings_v4.sql` in Supabase SQL Editor (after inventory_v3.sql).
 ## V5 (sold by kg)
 Run `supabase/unit_v5.sql` after settings_v4.sql. In Admin > Products set "Sold by: Kilogram", price = price per kg, step = 0.5.
 Customers type the weight (e.g. 2.5) and the amount updates live; bag, checkout and the server all use the exact weight.
+
+## V6 (phase 1)
+Run `supabase/phase1_v6.sql` after unit_v5.sql.
+Added: backup/export (Settings), new-order alert + sidebar badge + print delivery slip, auto out-of-stock + stock check at checkout,
+expiry dates on Receiving + dashboard warnings, Expenses, daily closing (Reports > Today) with best sellers and net profit after expenses,
+customer order tracking page, policies page, admin installable on phone (manifest).

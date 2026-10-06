@@ -6,7 +6,7 @@ export const S = { items: [], moves: [], products: [], edit: null, rep: null };
 const n = v => Number(v || 0), f2 = v => Number(n(v).toFixed(2)), today = () => new Date().toISOString().slice(0, 10);
 const TYPE = { purchase: "Stock In", sale: "Sale", adjustment: "Adjustment" };
 
-async function all(table, order) {
+export async function all(table, order) {
   let out = [], from = 0;
   for (;;) {
     const { data, error } = await supabase.from(table).select("*").order(order, { ascending: false }).order("id").range(from, from + 999);
@@ -102,6 +102,7 @@ function preset() {
   const p = $("repPreset").value, d = new Date(), y = d.getFullYear(), m = d.getMonth();
   const iso = x => new Date(x.getTime() - x.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
   if (p === "custom") return;
+  if (p === "today" || p === "yesterday") { const x = p === "today" ? d : new Date(d.getTime() - 864e5); $("repFrom").value = $("repTo").value = iso(x); return; }
   $("repTo").value = iso(d);
   $("repFrom").value = p === "month" ? iso(new Date(y, m, 1)) : p === "30" ? iso(new Date(d.getTime() - 29 * 864e5)) : p === "year" ? iso(new Date(y, 0, 1)) : "";
 }
@@ -117,13 +118,17 @@ async function report() {
   T.gross = T.rev - T.cogs; T.net = T.gross - T.loss;
   let oq = supabase.from("orders").select("total_amount").eq("status", "Completed"); if (from) oq = oq.gte("created_at", from); if (to) oq = oq.lte("created_at", to + "T23:59:59");
   const { data: od } = await oq; const ot = (od || []).reduce((t, o) => t + n(o.total_amount), 0);
+  let eq = supabase.from("expenses").select("amount,category"); if (from) eq = eq.gte("expense_date", from); if (to) eq = eq.lte("expense_date", to);
+  const { data: exd } = await eq; const byCat = {}; (exd || []).forEach(x => byCat[x.category] = (byCat[x.category] || 0) + n(x.amount));
+  const EX = (exd || []).reduce((t, x) => t + n(x.amount), 0), exRows = Object.entries(byCat).map(([k, v]) => [esc(k), "", money(v)]);
+  const bestRows = [...L].filter(b => b.sq > 0).sort((a, b) => b.sr - a.sr).slice(0, 5).map(b => [esc(b.x.i.sku), esc(b.x.i.name), f2(b.sq), money(b.sr)]);
   const cl = v => `<span class="${v >= 0 ? "pos" : "neg"}">${money(v)}</span>`;
-  const sumRows = [["Total purchases (money spent on stock)", money(T.buy)], ["Total sales (inventory items)", money(T.rev)], ["Cost of goods sold (avg cost)", money(T.cogs)], ["Gross profit", cl(T.gross)], ["Stock losses / adjustments", money(T.loss)], ["<b>Net profit</b>", `<b>${cl(T.net)}</b>`], ["Closing stock value (at cost)", money(T.stock)], [`Completed online orders (${(od || []).length}, all products)`, money(ot)]];
+  const sumRows = [["Total purchases (money spent on stock)", money(T.buy)], ["Total sales (inventory items)", money(T.rev)], ["Cost of goods sold (avg cost)", money(T.cogs)], ["Gross profit", cl(T.gross)], ["Stock losses / adjustments", money(T.loss)], ["<b>Net profit</b>", `<b>${cl(T.net)}</b>`], ["Operating expenses (rent, salary...)", money(EX)], ["<b>NET PROFIT AFTER EXPENSES</b>", `<b>${cl(T.net - EX)}</b>`], ["Closing stock value (at cost)", money(T.stock)], [`Completed online orders (${(od || []).length}, all products)`, money(ot)]];
   const itemRows = L.filter(b => b.bq || b.sq || b.x.stock).map(b => [esc(b.x.i.sku), esc(b.x.i.name), f2(b.bq), money(b.bc), f2(b.sq), money(b.sr), cl(b.sr - b.cogs), f2(b.x.stock), money(b.x.value)]);
   const mv = t => inR.filter(m => m.movement_type === t).map(m => [m.movement_date, esc(`${im.get(m.item_id)?.sku || ""} ${im.get(m.item_id)?.name || ""}`), f2(m.quantity), money(m.unit_price), money(n(m.quantity) * n(m.unit_price)), esc(m.supplier || m.reference || "")]);
   const buys = mv("purchase"), sales = mv("sale");
   const period = `${from || "Start"} to ${to || "Today"}`;
-  $("repOut").innerHTML = `<p class="muted">Period: <b>${period}</b></p><h3>Summary</h3><div class="rep-scroll"><table class="rep-table"><tbody>${sumRows.map(r => `<tr><td>${r[0]}</td><td class="r">${r[1]}</td></tr>`).join("")}</tbody></table></div><h3>Per-item</h3>${tbl(["SKU", "Item", "Bought", "Cost", "Sold", "Sales", "Profit", "Stock", "Value"], itemRows)}<h3>Purchases (when bought)</h3>${tbl(["Date", "Item", "Qty", "Unit cost", "Total", "Supplier"], buys)}<h3>Sales</h3>${tbl(["Date", "Item", "Qty", "Unit price", "Total", "Customer / Ref"], sales)}`;
+  $("repOut").innerHTML = `<p class="muted">Period: <b>${period}</b></p><h3>Summary</h3><div class="rep-scroll"><table class="rep-table"><tbody>${sumRows.map(r => `<tr><td>${r[0]}</td><td class="r">${r[1]}</td></tr>`).join("")}</tbody></table></div><h3>Per-item</h3>${tbl(["SKU", "Item", "Bought", "Cost", "Sold", "Sales", "Profit", "Stock", "Value"], itemRows)}<h3>Best sellers</h3>${tbl(["SKU", "Item", "Qty sold", "Sales"], bestRows)}<h3>Expenses</h3>${tbl(["Category", "", "Amount"], exRows)}<h3>Purchases (when bought)</h3>${tbl(["Date", "Item", "Qty", "Unit cost", "Total", "Supplier"], buys)}<h3>Sales</h3>${tbl(["Date", "Item", "Qty", "Unit price", "Total", "Customer / Ref"], sales)}`;
   S.rep = { period, sumRows, itemRows, buys, sales };
 }
 const strip = s => String(s).replace(/<[^>]*>/g, "").replace(/&amp;/g, "&").replace(/&#039;/g, "'");
