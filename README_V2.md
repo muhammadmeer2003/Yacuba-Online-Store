@@ -91,3 +91,11 @@ Run `supabase/phase1_v6.sql` after unit_v5.sql.
 Added: backup/export (Settings), new-order alert + sidebar badge + print delivery slip, auto out-of-stock + stock check at checkout,
 expiry dates on Receiving + dashboard warnings, Expenses, daily closing (Reports > Today) with best sellers and net profit after expenses,
 customer order tracking page, policies page, admin installable on phone (manifest).
+
+## V7
+Animations on public pages; order email/WhatsApp notifications (see NOTIFICATIONS_SETUP.txt, supabase/notify_v7.sql, supabase/functions/notify-order).
+
+## V8 (POS)
+Run `supabase/pos_v8.sql` after notify_v7.sql.
+Admin > POS / Cashier: open shift, scan or search, discount, Cash/GCash/Card, change, receipt print, hold bills, reprint, void, close shift report.
+POS sales deduct the same stock as online orders and appear in Reports, dashboard "Today" and low-stock alerts.

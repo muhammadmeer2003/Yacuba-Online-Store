@@ -1,0 +1,53 @@
+ORDER NOTIFICATIONS SETUP (Email + WhatsApp)  -  bilkul beginner steps
+=====================================================================
+Kya milega: naya order aate hi
+  - Owner ko EMAIL (poora order, customer ki detail)
+  - Customer ko EMAIL confirmation (agar usne email likhi ho)
+  - Owner ko WHATSAPP message (free CallMeBot se, optional)
+
+STEP 1: SQL
+  Supabase > SQL Editor > New query > supabase/notify_v7.sql ka poora text paste > Run
+
+STEP 2: Email service (Brevo, free plan)
+  1) brevo.com par free account banayen.
+  2) Senders & IP > Senders > Add a sender: apni email daalein (jis se email jaye) aur verify karein (code email par aata hai).
+  3) SMTP & API > API Keys > Generate a new API key > copy karke rakh lein.
+
+STEP 3: (Optional) Owner WhatsApp alert, free
+  1) callmebot.com par WhatsApp wala page kholein. Wahan likha tareeqa follow karein
+     (aap un ke number ko WhatsApp par ek message bhejte hain, wo aap ko apikey bhej dete hain).
+  2) Phone number country code ke saath, bina + ke likhein, jaise 639171234567.
+
+STEP 4: Function banayen
+  Supabase > Edge Functions > Deploy a new function > "Via Editor"
+  Name: notify-order
+  File supabase/functions/notify-order/index.ts ka poora code paste karein > Deploy.
+  Function ki settings mein "Verify JWT" ko OFF karein (hum apna secret header check karte hain).
+
+STEP 5: Secrets
+  Edge Functions > Secrets (Manage secrets) mein ye add karein:
+    WEBHOOK_SECRET   = koi bhi lamba random text (jaise yacuba-9f3k2x7q-secret)
+    BREVO_API_KEY    = Step 2 wali key
+    SENDER_EMAIL     = wahi email jo Brevo mein verify ki
+    OWNER_EMAIL      = jis email par aap order alert chahte hain
+    STORE_NAME       = YACUBA ONLINE STORE
+    SITE_URL         = aap ki website ka link (bina aakhri / ke)
+    CALLMEBOT_PHONE  = (optional) Step 3 ka number
+    CALLMEBOT_APIKEY = (optional) Step 3 ki key
+
+STEP 6: Database Webhook
+  Supabase > Database > Webhooks > Create a new hook
+  (naye dashboard mein ye Integrations > Database Webhooks mein ho sakta hai)
+    Name: notify-order     Table: orders     Events: Insert only
+    Type: Supabase Edge Functions > function: notify-order > Method POST
+    HTTP Headers: add karein  x-webhook-secret  =  wahi WEBHOOK_SECRET wali value
+  Create karein.
+
+STEP 7: Test
+  Website se ek test order karein (email field bhi bharein). Owner email aur customer email check karein
+  (Spam / Promotions folder bhi dekhein). Na aaye to Edge Functions > notify-order > Logs dekhein.
+
+NOTE
+  - Customer ko AUTOMATIC WhatsApp bhejna WhatsApp Business API (Meta) maangta hai: approval aur paise lagte hain.
+    Abhi order ke baad "Send order on WhatsApp" button hai, jis se customer aap ko ek tap mein message bhej deta hai.
+  - Brevo free plan ki daily limit hoti hai (mere ilm ke mutabiq 300 emails/din), apne account mein limit check kar lein.
